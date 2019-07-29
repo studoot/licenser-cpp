@@ -1,0 +1,15 @@
+x64-linux/
+x64-linux/include/
+x64-linux/include/gsl/
+x64-linux/include/gsl/gsl
+x64-linux/include/gsl/gsl_algorithm
+x64-linux/include/gsl/gsl_assert
+x64-linux/include/gsl/gsl_byte
+x64-linux/include/gsl/gsl_util
+x64-linux/include/gsl/multi_span
+x64-linux/include/gsl/pointers
+x64-linux/include/gsl/span
+x64-linux/include/gsl/string_span
+x64-linux/share/
+x64-linux/share/ms-gsl/
+x64-linux/share/ms-gsl/copyright

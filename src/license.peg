@@ -1,9 +1,18 @@
 License <- LicenseTerm (EOL LicenseTerm)* EOL*
 
-LicenseTerm <- SecretTerm / TimeTerm
+LicenseTerm <- SecretTerm / TimeTerm / LocationTerm / IdentityTerm
 
 SecretTerm <- SECRET EQUAL < REST_OF_LINE > 
 REST_OF_LINE <- ( !EOL_C . )+
+
+LocationTerm <- ANYWHERE / NodeTerm
+
+NodeTerm <- NODE EQUAL NO_SPACE_STRING
+
+IdentityTerm <- ANYONE / UserTerm / DomainTerm
+
+UserTerm <- USER EQUAL NO_SPACE_STRING
+DomainTerm <- DOMAIN EQUAL NO_SPACE_STRING
 
 TimeTerm <- PerpetualTerm / ExpiryTerm
 
@@ -46,11 +55,17 @@ DEC <- < [Dd][Ee][Cc] ( [Ee][Mm][Bb][Ee][Rr] )? >
 DAY <- < DIGIT DIGIT? >
 
 # General tokens
-NATURAL <- < DIGIT+ >
+~DASH <- < '-' >
 DIGIT <- [0-9]
 ~EQUAL <- < '=' >
-~DASH <- < '-' >
+NATURAL <- < DIGIT+ >
+NO_SPACE_STRING <- < (![ \t\n\r] .)+ >
 # Keywords
+~ANYONE <- < [Aa][Nn][Yy][Oo][Nn][Ee] >
+~ANYWHERE <- < [Aa][Nn][Yy][Ww][Hh][Ee][Rr][Ee] >
+~NODE <- < [Nn][Oo][Dd][Ee] >
+~DOMAIN <- < [Dd][Oo][Mm][Aa][Ii][Nn] >
+~USER <- < [Uu][Ss][Ee][Rr] >
 ~EXPIRY <- < [Ee][Xx][Pp][Ii][Rr][Yy] >
 ~PERPETUAL <- < [Pp][Ee][Rr][Pp][Ee][Tt][Uu][Aa][Ll] > 
 ~SECRET <- < [Ss][Ee][Cc][Rr][Ee][Tt] >

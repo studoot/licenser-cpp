@@ -1,80 +1,39 @@
-#include <array>
-#include <chrono>
-#include <fstream>
-#include <optional>
-#include <sstream>
-#include <typeinfo>
-#include <variant>
+#include "license.hpp"
 
-#include <date/date.h>
+#include <array>
+#include <fstream>
+#include <sstream>
+
 #define FMT_STRING_ALIAS 1
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/ostream.h>
-#include <peglib.h>
 using namespace peg;
 
 #include "license.peg.h"
+#include "overloaded.hpp"
 
 namespace fmt
 {
 template <class T>
-struct formatter<std::optional<T>>
+struct formatter<std::vector<T>>
 {
     template <typename ParseContext>
-    constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
+    constexpr auto parse(ParseContext &ctx)
+    {
+        return ctx.begin();
+    }
 
     template <typename FormatContext>
-    auto format(const std::optional<T> &t, FormatContext &ctx)
+    auto format(const std::vector<T> &t, FormatContext &ctx)
     {
-        if (t)
-            return formatter<T>::format(*t, ctx);
-        else
-            return format_to(ctx.out(), "None");
+        format_to(ctx.out(), "[ ");
+        for (const auto &i : t)
+            format_to(ctx.out(), "{}{}", i, (&i == &t.back() ? "" : ", "));
+        return format_to(ctx.out(), " ]");
     }
 };
 } // namespace fmt
-
-template <class... Ts>
-struct overloaded : Ts...
-{
-    using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...)->overloaded<Ts...>;
-
-struct perpetual_t
-{
-};
-
-struct term_length_t
-{
-    enum units_t
-    {
-        day = 0,
-        week,
-        month,
-        year
-    };
-    uint16_t count = 0;
-    units_t units = day;
-    date::year_month_day get_term_end(const date::year_month_day &start) const
-    {
-        switch (units)
-        {
-        default:
-        case day:
-            return date::year_month_day{date::sys_days{start} + date::days{count}};
-        case week:
-            return date::year_month_day{date::sys_days{start} + date::days{count * 7}};
-        case month:
-            return start + date::months{count};
-        case year:
-            return start + date::years{count};
-        };
-    }
-};
-using expiry_t = std::variant<date::year_month_day, term_length_t, perpetual_t>;
 
 namespace fmt
 {
@@ -82,69 +41,86 @@ template <>
 struct formatter<expiry_t>
 {
     template <typename ParseContext>
-    constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
+    constexpr auto parse(ParseContext &ctx)
+    {
+        return ctx.begin();
+    }
 
     template <typename FormatContext>
     auto format(const expiry_t &t, FormatContext &ctx)
     {
-        return std::visit(overloaded{
-                              [&](const perpetual_t &) {
-                                  return format_to(ctx.out(), "Expiry{{Perpetual}}");
-                              },
-                              [&](const term_length_t &t) {
-                                  using namespace std::literals;
-                                  static constexpr std::array<const char *, 4> unit_names = {"day", "week", "month", "year"};
-                                  return format_to(ctx.out(), "Expiry{{{} {}{}}}", t.count, unit_names[t.units], t.count != 1 ? "s" : "");
-                              },
-                              [&](const date::year_month_day &ymd) {
-                                  return format_to(ctx.out(), "Expiry{{{}}}", ymd);
-                              }},
-                          t);
+        return std::visit(
+            overloaded{[&](const perpetual_t &) {
+                           return format_to(ctx.out(), "Expiry{{Perpetual}}");
+                       },
+                       [&](const term_length_t &t) {
+                           using namespace std::literals;
+                           static const auto unit_names =
+                               std::unordered_map<term_length_t::units_t, std::string>{
+                                   {term_length_t::day, "day"s},
+                                   {term_length_t::week, "week"s},
+                                   {term_length_t::month, "month"s},
+                                   {term_length_t::year, "year"s}};
+                           return format_to(ctx.out(), "Expiry{{{} {}{}}}", t.count,
+                                            unit_names.at(t.units),
+                                            t.count != 1 ? "s" : "");
+                       },
+                       [&](const date::year_month_day &ymd) {
+                           return format_to(ctx.out(), "Expiry{{{}}}", ymd);
+                       }},
+            t);
+    }
+};
+template <>
+struct formatter<location_t>
+{
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext &ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const location_t &t, FormatContext &ctx)
+    {
+        return std::visit(
+            overloaded{[&](const anywhere_t &) {
+                           return format_to(ctx.out(), "Location{{Anywhere}}");
+                       },
+                       [&](const node_t &t) {
+                           return format_to(ctx.out(), "Location{{Node {}}}",
+                                            t.get());
+                       }},
+            t);
+    }
+};
+template <>
+struct formatter<identity_t>
+{
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext &ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const identity_t &t, FormatContext &ctx)
+    {
+        return std::visit(
+            overloaded{
+                [&](const anyone_t &) {
+                    return format_to(ctx.out(), "Identity{{Anyone}}");
+                },
+                [&](const user_t &t) {
+                    return format_to(ctx.out(), "Identity{{User {}}}", t.get());
+                },
+                [&](const domain_t &t) {
+                    return format_to(ctx.out(), "Identity{{Domain {}}}", t.get());
+                }},
+            t);
     }
 };
 } // namespace fmt
-
-template <class T>
-auto to_date(const T &t)
-{
-    return date::year_month_day{date::year::max(), date::month{12}, date::day{31}};
-}
-
-auto to_date(const date::year_month_day &t)
-{
-    const auto today = date::year_month_day{date::floor<date::days>(std::chrono::system_clock::now())};
-    return t < today ? to_date("Dummy") : t;
-}
-
-auto to_date(const term_length_t &t)
-{
-    const auto today = date::year_month_day{date::floor<date::days>(std::chrono::system_clock::now())};
-    return t.get_term_end(today);
-}
-
-expiry_t get_earliest_expiry(const expiry_t &l, const expiry_t &r)
-{
-    return std::visit(
-        [&](const auto &l, const auto &r) {
-            return (to_date(l) <= to_date(r)) ? expiry_t{l} : expiry_t{r}; },
-        l, r);
-}
-
-struct secret_t
-{
-    std::string secret;
-};
-
-using license_term_t = std::variant<secret_t, expiry_t>;
-static_assert(std::variant_size_v<license_term_t> == 2);
-struct license_t
-{
-    std::string secret;
-    std::vector<license_term_t> terms;
-    expiry_t expiry = perpetual_t{};
-    // std::vector<identity_term_t> allowed_users;
-    // std::vector<location_term_t> allowed_places;
-};
 
 uint16_t to_natural(const SemanticValues &sv) { return std::stoul(sv.str()); }
 
@@ -158,8 +134,7 @@ uint16_t from_month_name(const SemanticValues &sv)
     return static_cast<uint16_t>(sv.choice() + 1);
 }
 
-std::string
-read_file(std::string const &filename)
+std::string read_file(std::string const &filename)
 {
     std::ifstream in(filename, std::ios::in | std::ios::binary);
     if (in)
@@ -190,17 +165,7 @@ int main(int argc, char **argv)
                 license.terms = sv.transform<license_term_t>();
                 for (const auto &term : license.terms)
                 {
-                    switch (term.index())
-                    {
-                    case 0:
-                        license.secret = std::get<0>(term).secret;
-                        break;
-                    case 1:
-                        license.expiry = get_earliest_expiry(std::get<1>(term), license.expiry);
-                        break;
-                    default:
-                        break;
-                    };
+                    license.process_term(term);
                 }
                 return license;
             };
@@ -240,7 +205,39 @@ int main(int argc, char **argv)
             p["PerpetualTerm"] = [](const SemanticValues &sv) {
                 return expiry_t{perpetual_t{}};
             };
-            p.enable_packrat_parsing();
+
+            p["LocationTerm"] = [](const SemanticValues &sv) {
+                switch (sv.choice())
+                {
+                default:
+                case 0:
+                    return license_term_t{location_t{anywhere_t{}}};
+                case 1:
+                    return license_term_t{sv[0].get<location_t>()};
+                }
+            };
+            p["NodeTerm"] = [](const SemanticValues &sv) {
+                return location_t{node_t{sv[0].get<std::string>()}};
+            };
+
+            p["IdentityTerm"] = [](const SemanticValues &sv) {
+                switch (sv.choice())
+                {
+                default:
+                case 0:
+                    return license_term_t{identity_t{anyone_t{}}};
+                case 1:
+                case 2:
+                    return license_term_t{sv[0].get<identity_t>()};
+                }
+            };
+            p["UserTerm"] = [](const SemanticValues &sv) {
+                return identity_t{user_t{sv[0].get<std::string>()}};
+            };
+            p["DomainTerm"] = [](const SemanticValues &sv) {
+                return identity_t{domain_t{sv[0].get<std::string>()}};
+            };
+            p["NO_SPACE_STRING"] = [](const SemanticValues &sv) { return sv.str(); };
 #if 0
             size_t prev_pos = 0;
             p.enable_trace([&](
@@ -259,7 +256,9 @@ int main(int argc, char **argv)
             const auto file = read_file(argv[1]);
             license_t license;
             p.parse(file.c_str(), license, argv[1]);
-            fmt::print("License secret = {}, expiry = {}\n", license.secret, license.expiry);
+            fmt::print("License secret = {}, expiry = {}, locn = {}, id = {}\n",
+                       license.secret, license.expiry, license.allowed_places,
+                       license.allowed_users);
         }
     }
 }

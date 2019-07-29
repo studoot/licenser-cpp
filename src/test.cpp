@@ -126,7 +126,6 @@ expiry_t get_earliest_expiry(const expiry_t &l, const expiry_t &r)
 {
     return std::visit(
         [&](const auto &l, const auto &r) {
-            fmt::print("get_earliest_expiry({}, {}) -> {}\n", to_date(l),to_date(r), (to_date(l) <= to_date(r)) ? expiry_t{l} : expiry_t{r});
             return (to_date(l) <= to_date(r)) ? expiry_t{l} : expiry_t{r}; },
         l, r);
 }

@@ -1,6 +1,6 @@
 #include "license-parser.hpp"
 
-#include "license.peg.h"
+#include "license.peg.hpp"
 #include "overloaded.hpp"
 
 #include <peglib.h>

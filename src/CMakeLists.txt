@@ -13,9 +13,9 @@ add_library(NamedType INTERFACE)
 target_include_directories(NamedType INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../externals/named-type)
 
 add_executable(test test.cpp license.cpp license-parser.cpp license.peg)
+
+file(READ ${CMAKE_CURRENT_LIST_DIR}/license.peg LICENSE_PEG)
+configure_file(license.peg.hpp.in license.peg.hpp)
+
 target_include_directories(test PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/license.peg.h
-    COMMAND xxd ARGS -i license.peg ${CMAKE_CURRENT_BINARY_DIR}/license.peg.h
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_LIST_DIR}/license.peg)
 target_link_libraries(test PRIVATE fmt::fmt-header-only peglib NamedType)

@@ -1,0 +1,8 @@
+#ifndef LICENSE_PEG_HPP
+#define LICENSE_PEG_HPP
+
+constexpr const char *license_peg = R"-(
+@LICENSE_PEG@
+)-";
+
+#endif /* LICENSE_PEG_HPP */

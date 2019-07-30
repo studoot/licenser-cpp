@@ -13,6 +13,7 @@
 struct perpetual_t
 {
 };
+inline bool operator==(const perpetual_t &, const perpetual_t &) { return true; }
 
 struct term_length_t
 {
@@ -27,6 +28,8 @@ struct term_length_t
     units_t units = day;
     date::year_month_day get_term_end(const date::year_month_day &start) const;
 };
+inline bool operator==(const term_length_t &l, const term_length_t &r) { return l.count == r.count && l.units == r.units; }
+
 using expiry_t = std::variant<date::year_month_day, term_length_t, perpetual_t>;
 
 template <class T>
